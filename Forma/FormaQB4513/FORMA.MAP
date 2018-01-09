@@ -1,0 +1,44 @@
+
+ Start  Stop   Length Name                   Class
+ 00000H 0B233H 0B234H FORMA_CODE             BC_CODE
+ 0B234H 0BDA4H 00B71H CODE                   CODE
+ 0BDB0H 0C217H 00468H _TEXT                  CODE
+ 0C218H 0C8F9H 006E2H LOADRTM                CODE
+ 0C900H 0D6BFH 00DC0H BR_DATA                BLANK
+ 0D6C0H 0D6C0H 00000H BR_SKYS                BLANK
+ 0D6C0H 0EE59H 0179AH COMMON                 BLANK
+ 0EE5AH 0EFB9H 00160H BC_DATA                BC_VARS
+ 0EFBAH 0EFBFH 00006H NMALLOC                BC_VARS
+ 0EFC0H 0EFC0H 00000H ENMALLOC               BC_VARS
+ 0EFC0H 0EFC0H 00000H BC_FT                  BC_SEGS
+ 0EFC0H 1043DH 0147EH BC_CN                  BC_SEGS
+ 10440H 10442H 00003H BC_DS                  BC_SEGS
+ 10444H 10444H 00000H BC_SAB                 BC_SEGS
+ 10444H 1044BH 00008H BC_SA                  BC_SEGS
+ 1044CH 1044CH 00000H _DATA                  DATA
+ 1044CH 10467H 0001CH CDATA                  DATA
+ 10468H 10468H 00000H XCB                    DATA
+ 10468H 1046BH 00004H XC                     DATA
+ 1046CH 1046CH 00000H XCE                    DATA
+ 1046CH 1046CH 00000H XIFB                   DATA
+ 1046CH 1046CH 00000H XIF                    DATA
+ 1046CH 1046CH 00000H XIFE                   DATA
+ 1046CH 1046CH 00000H XIB                    DATA
+ 1046CH 1046CH 00000H XI                     DATA
+ 1046CH 1046CH 00000H XIE                    DATA
+ 1046CH 1046CH 00000H XPB                    DATA
+ 1046CH 1046CH 00000H XP                     DATA
+ 1046CH 1046CH 00000H XPE                    DATA
+ 1046CH 1046CH 00000H XCFB                   DATA
+ 1046CH 1046CH 00000H XCF                    DATA
+ 1046CH 1046CH 00000H XCFE                   DATA
+ 1046CH 10477H 0000CH DBDATA                 DATA
+ 10478H 10478H 00000H XOB                    BSS
+ 10478H 10478H 00000H XO                     BSS
+ 10478H 10478H 00000H XOE                    BSS
+ 10480H 10C7FH 00800H STACK                  STACK
+
+ Origin   Group
+ 0C90:0   DGROUP
+
+Program entry point at 0C21:00D0

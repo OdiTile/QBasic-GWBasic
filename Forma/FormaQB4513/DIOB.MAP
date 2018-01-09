@@ -1,0 +1,44 @@
+
+ Start  Stop   Length Name                   Class
+ 00000H 00262H 00263H DIOB_CODE              BC_CODE
+ 00263H 00DD3H 00B71H CODE                   CODE
+ 00DE0H 01167H 00388H _TEXT                  CODE
+ 01168H 01849H 006E2H LOADRTM                CODE
+ 01850H 0260FH 00DC0H BR_DATA                BLANK
+ 02610H 02610H 00000H BR_SKYS                BLANK
+ 02610H 02623H 00014H COMMON                 BLANK
+ 02624H 0262BH 00008H BC_DATA                BC_VARS
+ 0262CH 02631H 00006H NMALLOC                BC_VARS
+ 02632H 02632H 00000H ENMALLOC               BC_VARS
+ 02632H 02632H 00000H BC_FT                  BC_SEGS
+ 02640H 0273DH 000FEH BC_CN                  BC_SEGS
+ 02740H 02742H 00003H BC_DS                  BC_SEGS
+ 02744H 02744H 00000H BC_SAB                 BC_SEGS
+ 02744H 0274BH 00008H BC_SA                  BC_SEGS
+ 0274CH 0274CH 00000H _DATA                  DATA
+ 0274CH 02767H 0001CH CDATA                  DATA
+ 02768H 02768H 00000H XCB                    DATA
+ 02768H 0276BH 00004H XC                     DATA
+ 0276CH 0276CH 00000H XCE                    DATA
+ 0276CH 0276CH 00000H XIFB                   DATA
+ 0276CH 0276CH 00000H XIF                    DATA
+ 0276CH 0276CH 00000H XIFE                   DATA
+ 0276CH 0276CH 00000H XIB                    DATA
+ 0276CH 0276CH 00000H XI                     DATA
+ 0276CH 0276CH 00000H XIE                    DATA
+ 0276CH 0276CH 00000H XPB                    DATA
+ 0276CH 0276CH 00000H XP                     DATA
+ 0276CH 0276CH 00000H XPE                    DATA
+ 0276CH 0276CH 00000H XCFB                   DATA
+ 0276CH 0276CH 00000H XCF                    DATA
+ 0276CH 0276CH 00000H XCFE                   DATA
+ 0276CH 02777H 0000CH DBDATA                 DATA
+ 02778H 02778H 00000H XOB                    BSS
+ 02778H 02778H 00000H XO                     BSS
+ 02778H 02778H 00000H XOE                    BSS
+ 02780H 02F7FH 00800H STACK                  STACK
+
+ Origin   Group
+ 0185:0   DGROUP
+
+Program entry point at 0116:00D0

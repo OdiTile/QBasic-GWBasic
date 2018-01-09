@@ -1,0 +1,1487 @@
+                                                                      PAGE   1
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 0030   0006    '--------------------------------- F o r m a ------------------
+                -----------
+ 0030   0006    'Programma controllo stampatrice
+ 0030   0006    'copyright 1994         hardware - software       - STAVIT Snc 
+                -
+ 0030   0006    'revisione 11-02-1994: modifica algoritmo fermo macchina
+ 0030   0006    'revisione 06-04-1994: inserimento grafici
+ 0030   0006    '
+ 0030   0006    'Data division: dichiarazione delle variabili
+ 0030   0006    DECLARE SUB grafo (dat%())
+ 0030   0006    CONST IOPORT% = &H300   'indirizzo della scheda interfaccia
+ 0030   0006    DIM DIO%(7)             'vettore parametri passati alla scheda
+ 0030   0006    COMMON SHARED DIO%()
+ 0030   0006    COMMON SHARED FLAG%, FUN% ' flag%=ritorno tipo errore, fun%=par
+                ametro scheda
+ 0030   0006    DIM CH%(2000), dat%(350) 'ch% = canale,   dat%=letture consecut
+                ive (erano 350)
+ 0030   0006    COMMON SHARED CH%(), dat%()
+ 0030   0006    COMMON SHARED numlett%, mass1%, mass2%
+ 0030   0006    DIM analisi%(650)       'array analisi temporale sul finitore
+ 0030   0006    COMMON SHARED analisi%()
+ 0030   0006    d% = 0                  'porre a 1 per attivare debug
+ 0072   0008    'contatori              i contatori limite a 0 sono esclusi aut
+                omaticamente
+ 0072   0008    conta01! = 0            'contatore principale  (fino a 3,4x10^3
+                8)
+ 0083   000C    conta02! = 0            'limite di arresto da contatore princip
+                ale
+ 0094   0010    conta11& = 0            'contatore punzone     (fino a 21474836
+                47)
+ 00A5   0014    conta12& = 0            'limite punzone
+ 00B6   0018    conta21& = 0            'contatore matrice
+ 00C7   001C    conta22& = 0            'limite matrice
+ 00D8   0020    conta31& = 0            'contatore lotto
+ 00E9   0024    conta32& = 0            'limite lotto
+ 00FA   0028    conta41& = 0            'contatore turno ausiliario
+ 010B   002C    conta42& = 0            'limite turno ausiliario
+ 011C   0030    
+ 011C   0030    'variabili di processo
+ 011C   0030    mass1% = 0              'livello picco segnale 1    ( fino a 32
+                767)
+ 0127   0030    mass2% = 0              'livello picco segnale 2
+ 0132   0030    media1% = 0             'valore medio 1
+ 013D   0032    media2% = 0             'valore medio 2
+ 0148   0034    rif1% = 0               'livello riferimento 1
+ 0153   0036    rif2% = 0               'livello riferimento 2
+ 015E   0038    stab1% = 10             'stabilita': si ha intervento se il seg
+                nale esce da
+ 0169   003A                            ' +-10% (rif) per  (conta51) volte succ
+                essive
+ 0169   003A    stab2% = 10
+ 0174   003C    limite1% = 100          'interv. piccoli scostamenti= 100 conta
+                51 conta61
+ 017F   003E    limite2% = 200          'interv. grandi scostamenti=200 1 colpo
+                                                                      PAGE   2
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 018A   0040    limite3% = 400          'interv. senza autoinseguimento 2 colpi
+ 0195   0042    conta51% = 0            'contatore piccoli scostamenti consecut
+                ivi 1
+ 01A0   0044    conta52% = 5            'limite scostamenti consecutivi 1
+ 01AB   0046    conta61% = 0            'contatore piccoli scostamenti consecut
+                ivi 2
+ 01B6   0048    conta62% = 5            'limite scostamenti consecutivi 2
+ 01C1   004A    conta71% = 0            'contatore autoapprendimento
+ 01CC   004C    conta72% = 10           'limite autoapprendimento
+ 01D7   004E    conta81% = 0            'numero scostamenti preparatore
+ 01E2   0050    conta811% = 10          'piccoli scostamenti
+ 01ED   0052    conta812% = 5           'grandi scostamenti
+ 01F8   0054    conta813% = 3           'scostamenti assoluti
+ 0203   0056    conta82% = 0            'numero scostamenti finitore
+ 020E   0058    conta821% = 10          'piccoli scostamenti
+ 0219   005A    conta822% = 5           'grandi scostamenti
+ 0224   005C    conta823% = 3           'scostamenti assoluti
+ 022F   005E    tempo11& = 0            'temporizzatore eventi
+ 0240   0062    tempo12& = 5            'limite temporizzatore eventi (watchdog
+                )
+ 0251   0066    tempo21% = 0            'tempo turno ausiliario in minuti
+ 025C   0068    tempo22% = 0            'limite intervento turno ausiliario (0 
+                escluso)
+ 0267   006A    tempo23$ = ""           'tempo21% tradotto in ore e minuti
+ 0279   006E    stato% = 0              '0 escluso 1 min.      1 funzione giorn
+                o
+ 0284   0070                            '2 funzione notte      3 manuale 15 min
+                uti
+ 0284   0070    'variabili non inserite nel file forma.dat
+ 0284   0070    in1% = 0                'ingresso digitale 1
+ 028F   0072    in2% = 0                'ingresso digitale 2
+ 029A   0074    in3% = 0                'ingresso digitale 3
+ 02A5   0076    in4% = 0                'ingresso digitale 4
+ 02B0   0078                            'numero di letture per ogni segnale -at
+                tenzione-
+ 02B0   0078    numlett% = 350          'se si varia bisogna ridimensionare  DI
+                M dat% (...)
+ 02BB   0078                            '    (erano 300)
+ 02BB   0078    ferma% = 0              'arresta la macchina se diverso da 0 (c
+                odice fermo)
+ 02C6   007A                            '1=scost. consec. 1        2=scost. con
+                sec. 2
+ 02C6   007A                            '3=grande scostam.1        4=grande sco
+                stam.2
+ 02C6   007A                            '5=scost. assoluto 1       6=scost. ass
+                oluto 2
+ 02C6   007A                            '7=timeout        1        8=timeout   
+                     2
+ 02C6   007A                            '9=contatore princ.        10=contatore
+                 punzone
+ 02C6   007A                            '11=contatore matrice      12=contatore
+                 lotto
+ 02C6   007A                            '13=contatore turno aux    14=tempo tur
+                no aux
+                                                                      PAGE   3
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 02C6   007A                            'ecc.
+ 02C6   007A    limitepre1% = 0         'piccolo scostamento precedente 1 super
+                ato se = 1
+ 02D1   007C    limitepre2% = 0         'piccolo scostamento precedente 2 super
+                ato se = 1
+ 02DC   007E    limite01% = 0           'valore raggiunto dal preparatore
+ 02E7   0080    limite11% = 0           'valore di controllo preparatore
+ 02F2   0082    limite02% = 0           'valore raggiunto dal finitore
+ 02FD   0084    limite12% = 0           'valore di controllo finitore
+ 0308   0086    rif01% = 0              'riferimento assoluto senza inseguiment
+                o
+ 0313   0088    rif02% = 0              'riferimento assoluto senza inseguiment
+                o
+ 031E   008A    dummy% = 0              'variabile per usi vari
+ 0329   008C    conta8% = 50            'ogni 50 colpi esegue autoinseguimento
+ 0334   008E    conta9% = 100           'numero colpi salva dati su disco
+ 033F   0090    tempo24% = INT(TIMER / 60)      'var. locale tempo aux
+ 0362   0092    tempo3% = INT(TIMER / 60)       'tempo iniziale in stato%=0,3
+ 0385   0094    sel$ = ""               'variabile locale menu scelta
+ 0397   0098    inval$ = ""             'var locale input valori
+ 03A9   009C    disco% = 0              'disattiva interruzione quando scrive s
+                u disco
+ 03B4   009E    salvadati% = 0          '-da eliminare nel definitivo-
+ 03BF   00A0    colpimin0& = 0          'colpi al minuto (su conta41&)
+ 03D0   00A4    colpimin1& = 0          'dummy colpi al minuto
+ 03E1   00A8    tempo4! = TIMER         'dummy tempo per colpi al minuto
+ 03F7   00AC    '
+ 03F7   00AC    'legge i dati dal file forma.dat; se non esiste lo crea e setta
+                 i dati
+ 03F7   00AC    ON ERROR GOTO gesterr   'codice file non trovato = 53
+ 0406   00AC      OPEN "forma.dat" FOR INPUT AS #1        'se si effettua una m
+                odifica dei
+ 0420   00AC      INPUT #1, conta01!, conta02!          'parametri cambiare anc
+                he in gesterr
+ 044B   00AC      INPUT #1, conta11&, conta12&
+ 0476   00AC      INPUT #1, conta21&, conta22&
+ 04A1   00AC      INPUT #1, conta31&, conta32&
+ 04CC   00AC      INPUT #1, conta41&, conta42&
+ 04F7   00AC      INPUT #1, conta51%, conta52%
+ 0522   00AC      INPUT #1, conta61%, conta62%
+ 054D   00AC      INPUT #1, conta71%, conta72%
+ 0578   00AC      INPUT #1, media1%, media2%
+ 05A3   00AC      INPUT #1, rif1%, rif2%, stab1%, stab2%
+ 05E6   00AC      INPUT #1, limite1%, limite2%
+ 0611   00AC      INPUT #1, tempo12&, tempo21%, tempo22%
+ 0648   00AC      INPUT #1, conta811%, conta812%, conta813%
+ 067F   00AC      INPUT #1, conta821%, conta822%, conta823%
+ 06B6   00AC      CLOSE #1
+ 06C5   00AC      OPEN "analisi.dat" FOR INPUT AS #2
+ 06DF   00AC      FOR i = 0 TO 639
+ 06EC   00AC        INPUT #2, analisi%(i)
+ 071A   00B0      NEXT
+ 0743   00B0      CLOSE #2
+ 0755   00B0    ON ERROR GOTO 0             'chiude gestione errori
+                                                                      PAGE   4
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 0764   00B0    colpimin1& = conta41&       'prepara dummy colpi al minuto
+ 0777   00B0    'tabella codici scheda  0=inizializza         1=seleziona range
+                 canali
+ 0777   00B0    '                       2=gain per canale     3=singola convers
+                ione a/d
+ 0777   00B0    '                       4=n conversioni a/d   5=n conv. a/d + i
+                nterrupt
+ 0777   00B0    '                       6=reset interrupt     7=stato dopo inte
+                rrupt
+ 0777   00B0    '                       8=dati mem -> array   9=frequenza lettu
+                re
+ 0777   00B0    '                      10=livello trigger    11=uscita digitale
+ 0777   00B0    '                      12=ingresso digitale  13=n a/d in backgr
+                ound
+ 0777   00B0    '
+ 0777   00B0    'Inizializzazione  ax5210
+ 0777   00B0            DIO%(0) = IOPORT%       ' Ioport set  &H300
+ 0782   00B0            DIO%(1) = 5             ' IRQ NO. ***** controllare ***
+                ***
+ 078D   00B0            CALL ax5210(0, DIO%(0), FLAG%)
+ 07A9   00B2            LOCATE 25, 10
+ 07C7   00B2            'PRINT "Inizializzazione.....", FLAG%;
+ 07C7   00B2            'SLEEP (1)
+ 07C7   00B2    'Seleziona solo il canale 0
+ 07C7   00B2            DIO%(0) = 0             ' Start channel set
+ 07D2   00B2            DIO%(1) = 0             ' Stop  channel set
+ 07DD   00B2            CALL ax5210(1, DIO%(0), FLAG%)
+ 07F9   00B4            LOCATE 25, 10
+ 0817   00B4            'PRINT "Selezione canale 0...", FLAG%;
+ 0817   00B4            'SLEEP (1)
+ 0817   00B4    'Imposta il guadagno per tutti i canali
+ 0817   00B4    IF d% THEN GOTO salta5          'attivo durante il debug
+ 082E   00B4            FOR i% = 0 TO 15
+ 0838   00B4                DIO%(0) = i%        ' Set channel
+ 0843   00B6                DIO%(1) = 1         ' Set gain
+ 084E   00B6                CALL ax5210(2, DIO%(0), FLAG%)
+ 086A   00B8            LOCATE 25, 10
+ 0888   00B8            'PRINT "Imposta il guadagno..", i%; FLAG%;
+ 0888   00B8    '       SLEEP (1)
+ 0888   00B8            NEXT i%
+ 089B   00B8    salta5:
+ 08A5   00B8    'Imposta la frequenza di lettura al massimo
+ 08A5   00B8    ' SET TIMER BEFORE INTERRUPT (MAX RATE=10k)
+ 08A5   00B8                                    ' Set timer rate = 1M/(divisor1
+                 * divisor2)
+ 08A5   00B8            DIO%(0) = 10            ' Divisor 1
+ 08B0   00B8            DIO%(1) = 20             ' Divisor 2 ---era 8-----
+ 08BB   00B8            CALL ax5210(9, DIO%(0), FLAG%)
+ 08D7   00BA            LOCATE 25, 10
+ 08F5   00BA            'PRINT "Selezione frequenza..", FLAG%;
+ 08F5   00BA            'SLEEP (1)
+ 08F5   00BA            LOCATE 25, 1
+ 0910   00BA            PRINT SPC(75);
+ 0927   00BA    '       SLEEP (1)
+                                                                      PAGE   5
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 0927   00BA    'Imposta i rele' di uscita su ON
+ 0927   00BA            DIO%(0) = 7
+ 0932   00BA            CALL ax5210(11, DIO%(0), FLAG%)
+ 094E   00BC    CLS
+ 095C   00BC    GOSUB prefazione
+ 0969   00BC    autoapprendimento:          'preparazione delle variabili
+ 0973   00BC    conta71% = 0
+ 097E   00BC    IF conta71% < conta72% THEN   'conta71% conta72%
+ 098F   00BC      in1% = 0                  'autoapprendimento preparatore (1)
+ 099A   00BC      DO WHILE in1% = 0         'resta in attesa finche' arriva il 
+                prossimity 1
+ 09AA   00BC        CALL ax5210(12, DIO%(0), FLAG%)
+ 09C6   00BE        IF (DIO%(0) AND 1) <> 0 THEN in1% = 1
+ 09E3   00BE        IF d% THEN in1% = 1      'continua se si e' in debug
+ 09FD   00BE        ' in questo punto si devono inserire routine di gestione va
+                rie
+ 09FD   00BE      LOOP
+ 0A04   00BE      DIO%(0) = numlett%        'numero letture o conversioni
+ 0A0F   00BE      DIO%(1) = VARPTR(dat%(0)) 'puntatore array dati
+ 0A1A   00BE      DIO%(2) = 1               'trigger interno temporizzato max v
+                elocita'
+ 0A25   00BE      DIO%(3) = VARPTR(CH%(0))  'puntatore array canali
+ 0A30   00BE      CALL ax5210(4, DIO%(0), FLAG%)
+ 0A4C   00C0      IF d% THEN GOTO salto1    'continua se si e' in debug
+ 0A63   00C0      FOR i = 1 TO (numlett% - 1)
+ 0A80   00C4            IF dat%(i) > mass1% THEN mass1% = dat%(i)
+ 0ABA   00C4      NEXT i
+ 0AE3   00C4    salto1:
+ 0AED   00C4      IF conta71% = 0 THEN      'se primo dato
+ 0AFC   00C4        rif1% = mass1%          'viene preso tale e quale
+ 0B07   00C4      ELSE
+ 0B0F   00C4        rif1% = (rif1% + mass1%) / 2   'altrimenti e' la media
+ 0B2D   00C4      END IF
+ 0B32   00C4    '**************************************************************
+                *********
+ 0B32   00C4      in2% = 0                   'autoapprendimento finitore
+ 0B3D   00C4      DO WHILE in2% = 0          'resta in attesa finche' arriva il
+                 prossimity 2
+ 0B4C   00C4        CALL ax5210(12, DIO%(0), FLAG%)
+ 0B68   00C6        IF (DIO%(0) AND 2) <> 0 THEN in2% = 1
+ 0B85   00C6        IF d% THEN in2% = 1      'continua se si e' in debug
+ 0B9F   00C6        ' in questo punto si devono inserire routine di gestione va
+                rie
+ 0B9F   00C6      LOOP
+ 0BA6   00C6      DIO%(0) = numlett%        'numero letture o conversioni
+ 0BB1   00C6      DIO%(1) = VARPTR(dat%(0)) 'puntatore array dati
+ 0BBC   00C6      DIO%(2) = 1               'trigger interno temporizzato max v
+                elocita'
+ 0BC7   00C6      DIO%(3) = VARPTR(CH%(0))  'puntatore array canali
+ 0BD2   00C6      CALL ax5210(4, DIO%(0), FLAG%)
+ 0BEE   00C8      IF d% THEN GOTO salto2    'continua se si e' in debug
+ 0C05   00C8      FOR i = 1 TO (numlett% - 1)
+ 0C22   00CC            IF dat%(i) > mass2% THEN mass2% = dat%(i)
+ 0C5C   00CC      NEXT i
+                                                                      PAGE   6
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 0C85   00CC    salto2:
+ 0C8F   00CC      IF conta71% = 0 THEN      'se primo dato
+ 0C9E   00CC        rif2% = mass2%          'viene preso tale e quale
+ 0CA9   00CC      ELSE
+ 0CB1   00CC        rif2% = (rif2% + mass2%) / 2   'altrimenti e' la media
+ 0CCF   00CC      END IF
+ 0CD4   00CC      conta71% = conta71% + 1
+ 0CDD   00CC    END IF              ' if alla riga 129 pronti rif1% , mass1% , 
+                rif2%, mass2%
+ 0CE2   00CC    rif01% = rif1%
+ 0CED   00CC    rif02% = rif2%
+ 0CF8   00CC    LOCATE 25, 1
+ 0D13   00CC    PRINT "                       Premere un tasto per uscire     "
+                ;
+ 0D21   00CC    stato% = 0                  'la prima volta che parte stato% = 
+                0
+ 0D2C   00CC    tempo3% = INT(TIMER / 60)   'tempo iniziale in stato%=0
+ 0D4F   00CC    ciclocontrollo:             'ciclo di controllo principale
+ 0D59   00CC    '**************************************************************
+                *************
+ 0D59   00CC    in1% = 0       '*********************************ciclo preparat
+                ore**********
+ 0D64   00CC    tempo11& = TIMER
+ 0D7F   00CC    DO WHILE in1% = 0     'resta in attesa finche' arriva il prossi
+                mity 1
+ 0D8E   00CC      CALL ax5210(12, DIO%(0), FLAG%)
+ 0DAA   00CE      IF (DIO%(0) AND 1) <> 0 THEN in1% = 1
+ 0DC7   00CE      IF TIMER - tempo11& > tempo12& THEN ferma% = 7 ' timeout 1
+ 0E08   00CE      IF d% THEN in1% = 1      'continua se si e' in debug
+ 0E22   00CE      IF (INT(TIMER / 60) - tempo3%) > 1 THEN          'tempo 1 min
+                uto
+ 0E59   00CE       IF stato% = 0 THEN stato% = 1
+ 0E73   00CE      END IF
+ 0E78   00CE      IF (INT(TIMER / 60) - tempo3%) > 15 THEN          'tempo 15 m
+                inuto
+ 0EAF   00CE       IF stato% = 3 THEN stato% = 1
+ 0EC9   00CE      END IF
+ 0ECE   00CE     
+ 0ECE   00CE      IF (TIMER - tempo4!) > 60 THEN   ' conta41& colpimin0& colpim
+                in1& tempo4!
+ 0EF3   00CE        colpimin0& = conta41& - colpimin1&
+ 0F0E   00CE        colpimin1& = conta41&
+ 0F21   00CE        tempo4! = TIMER
+ 0F37   00CE      END IF
+ 0F3C   00CE      IF INKEY$ <> "" THEN GOSUB menu
+ 0F62   00CE    LOOP
+ 0F6A   00CE    LOCATE 1, 14
+ 0F82   00CE    PRINT "Preparatore..", CHR$(1)
+ 0F9F   00CE    DIO%(0) = numlett%          'numero letture o conversioni
+ 0FAA   00CE    DIO%(1) = VARPTR(dat%(0))   'puntatore array dati
+ 0FB5   00CE    DIO%(2) = 1                 'trigger interno temporizzato max v
+                elocita'
+ 0FC0   00CE    DIO%(3) = VARPTR(CH%(0))    'puntatore array canali
+ 0FCB   00CE    CALL ax5210(4, DIO%(0), FLAG%)
+                                                                      PAGE   7
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 0FE7   00D0    mass1% = 0
+ 0FF2   00D0    IF d% THEN GOTO salto3      'continua se si e' in debug
+ 1009   00D0    FOR i = 1 TO (numlett% - 1)
+ 1026   00D4      IF dat%(i) > mass1% THEN mass1% = dat%(i)
+ 1060   00D4    NEXT i
+ 1089   00D4    salto3:
+ 1093   00D4    IF conta31& MOD conta8% = 0 THEN GOSUB inseguimento1    'aggior
+                na rif1%
+ 10C9   00D4    ' Uscita digitale. Confronta il mass% con rif% +- stab1% e segn
+                ala in uscita
+ 10C9   00D4    ' ferma% = 0
+ 10C9   00D4    limite01% = ABS(mass1% - rif1%)
+ 10DD   00D4    conta81% = conta81% + 1
+ 10E6   00D4    limite11% = stab1%
+ 10F1   00D4    limite12% = stab1% + 100
+ 10FF   00D4    SELECT CASE limite01%
+ 110A   00D6      CASE IS >= limite3%
+ 111B   00D6        IF conta81% > conta813% THEN       'verifica che lo scostam
+                ento non sia
+ 112C   00D6           conta81% = 0                    'un disturbo accidentale
+ 1137   00D6           ferma% = 5                      'supero valore assoluto 
+                per 3 volte
+ 1142   00D6        END IF                             '
+ 1147   00D6      CASE IS >= limite12%                 '
+ 115B   00D6        IF conta81% > conta812% THEN       '  3  5  10
+ 116C   00D6           conta81% = 0
+ 1177   00D6           ferma% = 3
+ 1182   00D6        END IF
+ 1187   00D6      CASE IS >= limite11%
+ 119B   00D6        IF conta81% > conta811% THEN
+ 11AC   00D6          conta81% = 0
+ 11B7   00D6          ferma% = 1
+ 11C2   00D6        END IF
+ 11C7   00D6      CASE ELSE
+ 11CF   00D6        conta81% = 0
+ 11DA   00D6    END SELECT
+ 11DF   00D6    '''''''''''''''''algoritmo sostituito'''''''''''''''''''
+ 11DF   00D6    'limite11% = (rif1% * stab1%) / 100
+ 11DF   00D6    'dummy% = ABS(limite01% - limite11%) + 100
+ 11DF   00D6    'IF (ABS(mass1% - rif01%) - (rif01% * stab1%) / 100) >= limite3
+                % THEN
+ 11DF   00D6    '    IF limitepre1% = 1 THEN conta51% = conta51% + 1
+ 11DF   00D6    '    limitepre1% = 1
+ 11DF   00D6    '    IF conta51% >= conta52% THEN ferma% = 1   'ferma codice 1
+ 11DF   00D6    '  IF conta81% = 0 THEN conta81% = 1  'verifica che lo scostame
+                nto non sia
+ 11DF   00D6    '  IF conta81% <> 0 THEN               'un disturbo accidentale
+ 11DF   00D6    '    conta81% = 0                     '
+ 11DF   00D6    '    ferma% = 5                       'supero valore assoluto p
+                er 2 volte
+ 11DF   00D6    '  END IF                             '
+ 11DF   00D6    'ELSEIF limite01% <= limite11% THEN       'in tolleranza
+ 11DF   00D6    '  limitepre1% = 0
+ 11DF   00D6    '  conta51% = 0
+                                                                      PAGE   8
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 11DF   00D6    'ELSEIF (dummy% >= limite1%) AND (dummy% < limite2%) THEN
+ 11DF   00D6    ' IF limitepre1% = 1 THEN conta51% = conta51% + 1
+ 11DF   00D6    ' limitepre1% = 1
+ 11DF   00D6    ' IF conta51% >= conta52% THEN
+ 11DF   00D6    '   ferma% = 1                           'ferma codice 1
+ 11DF   00D6    '   IF ((stato% = 1) OR (stato% = 2)) THEN GOSUB fermamacchina
+ 11DF   00D6    ' END IF
+ 11DF   00D6    'ELSEIF dummy% >= (limite2% + 100) THEN  'correzione da valutar
+                e
+ 11DF   00D6    '    ferma% = 3
+ 11DF   00D6    'END IF
+ 11DF   00D6    
+ 11DF   00D6    
+ 11DF   00D6    IF ((stato% = 1) OR (stato% = 2)) AND (ferma% <> 0) THEN GOSUB 
+                fermamacchina
+ 121D   00D6    LOCATE 1, 29
+ 1235   00D6    PRINT SPC(10);
+ 124C   00D6    LOCATE 1, 70                    'pulisce lampeggio errore
+ 1264   00D6    PRINT SPC(7);
+ 127B   00D6    LOCATE 2, 70
+ 1299   00D6    PRINT SPC(5);
+ 12B0   00D6    7 LOCATE 5, 60                    'pulisce lampeggio cambio pun
+                zone
+ 12CE   00D6    PRINT SPC(10);
+ 12E5   00D6    LOCATE 6, 60                     'pulisce lampeggio cambio matr
+                ice
+ 1303   00D6    PRINT SPC(10);
+ 131A   00D6    LOCATE 7, 60                     'pulisce lampeggio fine lotto
+ 1338   00D6    PRINT SPC(10);
+ 134F   00D6    in2% = 0       '*********************************ciclo finitore
+                **********
+ 135A   00D6    tempo11& = TIMER
+ 1375   00D6    DO WHILE in2% = 0     'resta in attesa finche' arriva il prossi
+                mity 2
+ 1384   00D6      CALL ax5210(12, DIO%(0), FLAG%)
+ 13A0   00D8      IF (DIO%(0) AND 2) <> 0 THEN in2% = 1
+ 13BD   00D8      IF TIMER - tempo11& > tempo12& THEN ferma% = 8 ' timeout 2
+ 13FE   00D8      IF d% THEN in2% = 1      'continua se si e' in debug
+ 1418   00D8      ' in questo punto si devono inserire routine di gestione vari
+                e
+ 1418   00D8      ' ecc.
+ 1418   00D8    LOOP
+ 1420   00D8    LOCATE 2, 14
+ 143E   00D8    PRINT "Finitore.....", CHR$(1);
+ 145B   00D8    DIO%(0) = numlett%          'numero letture o conversioni
+ 1466   00D8    DIO%(1) = VARPTR(dat%(0))   'puntatore array dati
+ 1471   00D8    DIO%(2) = 1                 'trigger interno temporizzato max v
+                elocita'
+ 147C   00D8    DIO%(3) = VARPTR(CH%(0))    'puntatore array canali
+ 1487   00D8    CALL ax5210(4, DIO%(0), FLAG%)
+ 14A3   00DA    mass2% = 0
+ 14AE   00DA    IF d% THEN GOTO salto4      'continua se si e' in debug
+ 14C5   00DA    FOR i = 1 TO (numlett% - 1)
+ 14E2   00DE      IF dat%(i) > mass2% THEN mass2% = dat%(i)
+                                                                      PAGE   9
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 151C   00DE    NEXT i
+ 1545   00DE    salto4:
+ 154F   00DE    IF conta31& MOD conta8% = 0 THEN GOSUB inseguimento2      'aggi
+                orna rif2%
+ 1585   00DE    ' Uscita digitale. Confronta il mass% con rif% +- stab2% e segn
+                ala in uscita
+ 1585   00DE    'stato% = 1         'ferma se esce dalla tolleranza
+ 1585   00DE    'ferma% = 0
+ 1585   00DE    limite02% = ABS(mass2% - rif2%)
+ 1599   00DE    conta82% = conta82% + 1
+ 15A2   00DE    limite21% = stab2%
+ 15AD   00E0    limite22% = stab2% + 100
+ 15BB   00E2    SELECT CASE limite02%
+ 15C6   00E4      CASE IS >= limite3%
+ 15D7   00E4        IF conta82% > conta823% THEN       'verifica che lo scostam
+                ento non sia
+ 15E8   00E4           conta82% = 0                    'un disturbo accidentale
+ 15F3   00E4           ferma% = 6                      'supero valore assoluto 
+                per 3 volte
+ 15FE   00E4        END IF                             '
+ 1603   00E4      CASE IS >= limite22%
+ 1617   00E4        IF conta82% > conta822% THEN       '  3  5  10
+ 1628   00E4           conta82% = 0
+ 1633   00E4           ferma% = 4
+ 163E   00E4        END IF
+ 1643   00E4      CASE IS >= limite21%
+ 1657   00E4        IF conta82% > conta821% THEN
+ 1668   00E4          conta82% = 0
+ 1673   00E4          ferma% = 2
+ 167E   00E4        END IF
+ 1683   00E4      CASE ELSE
+ 168B   00E4        conta82% = 0
+ 1696   00E4    END SELECT
+ 169B   00E4    '''''''''''''''''algoritmo sostituito'''''''''''''''''''
+ 169B   00E4    'limite12% = (rif2% * stab2%) / 100
+ 169B   00E4    'dummy% = ABS(limite02% - limite12%) + 100
+ 169B   00E4    'IF (ABS(mass2% - rif02%) - (rif02% * stab2%) / 100) >= limite3
+                % THEN
+ 169B   00E4    '  IF conta82% = 0 THEN conta82% = 1  'verifica che lo scostame
+                nto non sia
+ 169B   00E4    '  IF conta82% <> 0 THEN               'un disturbo accidentale
+ 169B   00E4    '    conta82% = 0                     '
+ 169B   00E4    '    ferma% = 6                       'supero valore assoluto p
+                er 2 volte
+ 169B   00E4    '  END IF                             '
+ 169B   00E4    'ELSEIF limite02% <= limite12% THEN       'in tolleranza
+ 169B   00E4    '  limitepre2% = 0
+ 169B   00E4    '  conta61% = 0
+ 169B   00E4    'ELSEIF (dummy% >= limite1%) AND (dummy% < limite2%) THEN
+ 169B   00E4    '  IF limitepre2% = 1 THEN conta61% = conta61% + 1
+ 169B   00E4    '  limitepre2% = 1
+ 169B   00E4    '  IF conta61% >= conta62% THEN
+ 169B   00E4    '    ferma% = 2                           'ferma codice 1
+ 169B   00E4    '    IF ((stato% = 1) OR (stato% = 2)) THEN GOSUB fermamacchina
+                                                                      PAGE  10
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 169B   00E4    '  END IF
+ 169B   00E4    'ELSEIF dummy% >= limite2% THEN
+ 169B   00E4    ''  IF limitepre2% = 1 THEN conta61% = conta61% + 1
+ 169B   00E4    ''  limitepre2% = 1
+ 169B   00E4    ''  IF conta61% >= conta62% THEN ferma% = 2   'ferma codice 2
+ 169B   00E4    ' IF conta51% >= conta52% THEN
+ 169B   00E4    '   ferma% = 1                           'ferma codice 1
+ 169B   00E4    '   IF ((stato% = 1) OR (stato% = 2)) THEN GOSUB fermamacchina
+ 169B   00E4    ' END IF
+ 169B   00E4    '  ferma% = 4
+ 169B   00E4    'END IF
+ 169B   00E4    IF ((stato% = 1) OR (stato% = 2)) AND (ferma% <> 0) THEN GOSUB 
+                fermamacchina
+ 16D9   00E4    LOCATE 2, 29
+ 16F7   00E4    PRINT SPC(10);
+ 170E   00E4    GOSUB aggcontatori
+ 171B   00E4    '  IF RIGHT$(STR$(conta31&), 2) = "11" THEN
+ 171B   00E4    '             ' conta31& MOD 100 = 0 THEN   'porre a 1000 o 200
+                0
+ 171B   00E4    '      salvadati% = salvadati% + 1      ' da eliminare -solo pe
+                r prova-
+ 171B   00E4    '
+ 171B   00E4      IF conta41& MOD conta9% = 0 THEN
+ 1744   00E4         LOCATE 20, 45
+ 1762   00E4         PRINT CHR$(178);
+ 1776   00E4         GOSUB salva            ' salva dati su disco
+ 1783   00E4         disco% = 0
+ 178E   00E4         LOCATE 20, 44
+ 17AC   00E4         PRINT "   ";
+ 17BA   00E4         conta01! = conta01! + 3   'recupero del tempo perso nel sa
+                lvataggio
+ 17D0   00E4         conta11& = conta11& + 3
+ 17E9   00E4         conta21& = conta21& + 3
+ 1802   00E4         conta31& = conta31& + 3
+ 181B   00E4         conta41& = conta41& + 3
+ 1834   00E4      END IF
+ 1839   00E4    IF ferma% <> 0 THEN             'lampeggia
+ 1848   00E4    LOCATE 1, 70
+ 1860   00E4    PRINT STRING$(5, 178); ferma%
+ 1881   00E4    LOCATE 2, 70
+ 189F   00E4    PRINT STRING$(5, 178);
+ 18B7   00E4    END IF
+ 18BC   00E4    IF ((stato% = 1) OR (stato% = 2)) AND (ferma% <> 0) THEN GOSUB 
+                fermamacchina
+ 18FA   00E4    disco% = disco% + 1
+ 1903   00E4    ferma% = 0                      'resetta causa di errore solo i
+                n questo punto
+ 190E   00E4    GOTO ciclocontrollo             'ripete continuamente il ciclo
+ 1916   00E4    '**************************************************************
+                **************
+ 1916   00E4    '**************************************************************
+                **************
+ 1916   00E4    
+ 1916   00E4    
+                                                                      PAGE  11
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 1916   00E4    
+ 1916   00E4    
+ 1916   00E4    
+ 1916   00E4    'modifica variabili dall'utente
+ 1916   00E4    
+ 1916   00E4    'subroutine varie
+ 1916   00E4    CLS
+ 1924   00E4    END
+ 192E   00E4    gesterr:                'subroutine gestione errori; manca file
+                 = 53
+ 1938   00E4    IF ERR = 53 THEN
+ 194A   00E4      CLOSE #1
+ 1959   00E4      OPEN "forma.dat" FOR OUTPUT AS #1
+ 1973   00E4      PRINT #1, conta01!, conta02!          'prepara un file dati i
+                niziale
+ 199B   00E4      PRINT #1, conta11&, conta12&
+ 19C3   00E4      PRINT #1, conta21&, conta22&
+ 19EB   00E4      PRINT #1, conta31&, conta32&
+ 1A13   00E4      PRINT #1, conta41&, conta42&
+ 1A3B   00E4      PRINT #1, conta51%, conta52%
+ 1A5B   00E4      PRINT #1, conta61%, conta62%
+ 1A7B   00E4      PRINT #1, conta71%, conta72%
+ 1A9B   00E4      PRINT #1, media1%, media2%
+ 1ABB   00E4      PRINT #1, rif1%, rif2%, stab1%, stab2%
+ 1AED   00E4      PRINT #1, limite1%, limite2%
+ 1B0D   00E4      PRINT #1, tempo12&, tempo21%, tempo22%
+ 1B3A   00E4      PRINT #1, conta811%, conta812%, conta813%
+ 1B63   00E4      PRINT #1, conta821%, conta822%, conta823%
+ 1B8C   00E4      CLOSE #1
+ 1B9B   00E4      CLOSE #2
+ 1BAD   00E4      OPEN "analisi.dat" FOR OUTPUT AS #2
+ 1BC7   00E4      FOR i = 0 TO 639
+ 1BD4   00E4        PRINT #2, 0
+ 1BEA   00E4      NEXT
+ 1C13   00E4      CLOSE #2
+ 1C25   00E4      RESUME 0
+ 1C2F   00E4    END IF
+ 1C34   00E4    fermamacchina:
+ 1C3E   00E4    IF disco% < 5 THEN RETURN
+ 1C57   00E4    SELECT CASE stato%
+ 1C62   00E6      CASE IS = 1                   'ferma in funzione giorno
+ 1C71   00E6    '   DIO%(0) = 1                  'attiva la uscita digitale 1
+ 1C71   00E6    '   CALL ax5210(11, DIO%(0), FLAG%)
+ 1C71   00E6        DIO%(0) = 3                                    'ferma il fi
+                lo
+ 1C7C   00E6        CALL ax5210(11, DIO%(0), FLAG%)
+ 1C98   00E8        FOR fermofilo = 0 TO 10000: NEXT fermofilo    'aspetta un g
+                iro
+ 1CCF   00EC        DIO%(0) = 1                                    'ferma il mo
+                tore
+ 1CDA   00EC        CALL ax5210(11, DIO%(0), FLAG%)
+ 1CF6   00EE      CASE IS = 2                   'ferma in funzione notte
+ 1D08   00EE    '   DIO%(0) = 2                  'attiva la uscita digitale 2
+ 1D08   00EE    '   CALL ax5210(11, DIO%(0), FLAG%)
+                                                                      PAGE  12
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 1D08   00EE        DIO%(0) = 3                                    'ferma il fi
+                lo
+ 1D13   00EE        CALL ax5210(11, DIO%(0), FLAG%)
+ 1D2F   00F0        FOR fermofilo = 0 TO 10000: NEXT fermofilo    'aspetta un g
+                iro
+ 1D65   00F0        DIO%(0) = 0                                    'ferma tutto
+ 1D70   00F0        CALL ax5210(11, DIO%(0), FLAG%)
+ 1D8C   00F2      CASE IS = 3
+ 1D9E   00F2       'siamo in manuale e non si fa niente
+ 1D9E   00F2    END SELECT
+ 1DA6   00F2    LOCATE 24, 1
+ 1DC1   00F2    PRINT "       *********************   FERMO  MACCHINA  ********
+                *************";
+ 1DCF   00F2    LOCATE 25, 1
+ 1DEA   00F2    PRINT SPC(75);
+ 1E01   00F2    LOCATE 25, 1
+ 1E1C   00F2    SELECT CASE ferma%
+ 1E27   00F4      CASE IS = 1
+ 1E36   00F4       PRINT "           Fermo supero piccoli scostamenti sul prepa
+                ratore   ";
+ 1E44   00F4      CASE IS = 2
+ 1E56   00F4       PRINT "           Fermo supero piccoli scostamenti sul finit
+                ore      ";
+ 1E64   00F4      CASE IS = 3
+ 1E76   00F4       PRINT "           Fermo per grande scostamento sul preparato
+                re       ";
+ 1E84   00F4      CASE IS = 4
+ 1E96   00F4       PRINT "           Fermo per grande scostamento sul finitore 
+                         ";
+ 1EA4   00F4      CASE IS = 5
+ 1EB6   00F4       PRINT "           Fermo scostamento assoluto sul preparatore
+                         ";
+ 1EC4   00F4      CASE IS = 6
+ 1ED6   00F4       PRINT "           Fermo scostamento assoluto sul finitore   
+                         ";
+ 1EE4   00F4      CASE IS = 7
+ 1EF6   00F4       PRINT "           Fermo per fouri tempo massimo preparatore 
+                         ";
+ 1F04   00F4      CASE IS = 8
+ 1F16   00F4       PRINT "           Fermo per fuori tempo massimo finitore    
+                         ";
+ 1F24   00F4      CASE IS = 9
+ 1F36   00F4       PRINT "           Fermo per raggiunto contatore principale  
+                         ";
+ 1F44   00F4      CASE IS = 10
+ 1F56   00F4       PRINT "           Fermo per raggiunto contatore punzone     
+                         ";
+ 1F64   00F4      CASE IS = 11
+ 1F76   00F4       PRINT "           Fermo per raggiunto contatore matrice     
+                         ";
+ 1F84   00F4      CASE IS = 12
+ 1F96   00F4       PRINT "           Fermo per raggiunto contatore lotto       
+                         ";
+ 1FA4   00F4      CASE IS = 13
+                                                                      PAGE  13
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 1FB6   00F4       PRINT "           Fermo per raggiunto contatore turno ausili
+                ario     ";
+ 1FC4   00F4      CASE IS = 14
+ 1FD6   00F4       PRINT "           Fermo per raggiunto contatore tempo ausili
+                ario     ";
+ 1FE4   00F4    ' CASE IS = 15
+ 1FE4   00F4    '  PRINT ".....................................................
+                ........ ";
+ 1FE4   00F4      CASE ELSE
+ 1FEC   00F4       PRINT ".....................................................
+                .........";
+ 1FFA   00F4    END SELECT
+ 1FFF   00F4    ferma% = 0
+ 200A   00F4    IF (stato% = 1) OR (stato% = 2) THEN stato% = 0
+ 2039   00F4    tempo3% = INT(TIMER / 60)       'tempo iniziale in stato%=0
+ 205C   00F4    LOCATE 23, 15
+ 207A   00F4    DO
+ 2080   00F4     INPUT ; "Premere il tasto Invio per ripartire......", inval$
+ 20AF   00F4    LOOP UNTIL inval$ <> CHR$(13)
+ 20C9   00F4    'DIO%(0) = 0                  'resetta tutte le uscite digitali
+ 20C9   00F4    DIO%(0) = 7                   'riporta i rele' su ON
+ 20D4   00F4    CALL ax5210(11, DIO%(0), FLAG%)
+ 20F0   00F6    CLS
+ 20FE   00F6    LOCATE 25, 1
+ 2119   00F6    PRINT "                       Premere un tasto per uscire      
+                            ";
+ 2127   00F6    GOSUB salva             ' salva dat correnti
+ 2134   00F6    RETURN
+ 213E   00F6    aggcontatori:
+ 2148   00F6    conta01! = conta01! + 1
+ 215E   00F6    conta11& = conta11& + 1
+ 2177   00F6    conta21& = conta21& + 1
+ 2190   00F6    conta31& = conta31& + 1
+ 21A9   00F6    conta41& = conta41& + 1
+ 21C2   00F6    IF (conta01! >= conta02!) AND (conta02! <> 0) THEN ferma% = 9
+ 220B   00F6    'IF (conta11& >= conta12&) AND (conta12& <> 0) THEN ferma% = 10
+ 220B   00F6    'IF (conta21& >= conta22&) AND (conta22& <> 0) THEN ferma% = 11
+ 220B   00F6    'IF (conta31& >= conta32&) AND (conta32& <> 0) THEN ferma% = 12
+ 220B   00F6    IF (conta41& >= conta42&) AND (conta42& <> 0) THEN ferma% = 13
+ 225B   00F6    LOCATE 3, 1
+ 2276   00F6    PRINT STRING$(80, 205);
+ 228E   00F6    LOCATE 4, 1
+ 22A9   00F6    PRINT "(1-2)   Contatore principale..."; conta01!, conta02!
+ 22D1   00F6    LOCATE 5, 1
+ 22EC   00F6    PRINT "(3-4)   Punzone - no stop -...."; conta11&, conta12&
+ 2314   00F6    IF conta11& > conta12& THEN
+ 2333   00F6      LOCATE 5, 60                         'lampeggia cambio punzon
+                e
+ 2351   00F6      IF conta12& <> 0 THEN PRINT STRING$(10, 178);
+ 2385   00F6    END IF
+ 238A   00F6    LOCATE 6, 1
+ 23A5   00F6    PRINT "(5-6)   Matrice - no stop -...."; conta21&, conta22&
+ 23CD   00F6    IF conta21& > conta22& THEN
+ 23EC   00F6      LOCATE 6, 60                         'lampeggia cambio matric
+                                                                      PAGE  14
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+                e
+ 240A   00F6      IF conta22& <> 0 THEN PRINT STRING$(10, 178);
+ 243E   00F6    END IF
+ 2443   00F6    LOCATE 7, 1
+ 245E   00F6    PRINT "(7-8)   Lotto   - no stop -...."; conta31&, conta32&
+ 2486   00F6    IF conta31& > conta32& THEN
+ 24A5   00F6      LOCATE 7, 60                         'lampeggia fine lotto
+ 24C3   00F6      IF conta32& <> 0 THEN PRINT STRING$(10, 178);
+ 24F7   00F6    END IF
+ 24FC   00F6    LOCATE 8, 1
+ 2517   00F6    PRINT "(9-10)  Contatore turno aux...."; conta41&, conta42&
+ 253F   00F6    tempo23$ = STR$(INT(tempo21% / 60)) + " :" + STR$(tempo21% MOD 
+                60)
+ 2591   00F6    LOCATE 9, 1
+ 25AC   00F6    PRINT "(11-12) Tempo in minuti........"; tempo21%, tempo22%, te
+                mpo23$
+ 25D5   00F6    LOCATE 10, 1
+ 25F0   00F6    PRINT STRING$(80, 196);
+ 2608   00F6    LOCATE 11, 50
+ 2626   00F6    PRINT SPC(28);
+ 263D   00F6    LOCATE 11, 1
+ 2658   00F6    PRINT "Preparatore...................."; mass1%, rif1%, limite0
+                1%
+ 2681   00F6    LOCATE 12, 50
+ 269F   00F6    PRINT SPC(28);
+ 26B6   00F6    LOCATE 12, 1
+ 26D1   00F6    PRINT "Finitore......................."; mass2%, rif2%, limite0
+                2%
+ 26FA   00F6    LOCATE 13, 1
+ 2715   00F6    PRINT "Stabilita'....................."; stab1%, stab2%, conta8
+                1%; conta82%
+ 2747   00F6    LOCATE 14, 1
+ 2762   00F6    PRINT "Limiti preparatore............."; limite11%, limite12%, 
+                limite3%
+ 278B   00F6    'LOCATE 14, 55
+ 278B   00F6    'PRINT conta51%
+ 278B   00F6    LOCATE 15, 1
+ 27A6   00F6    PRINT "Limiti finitore................"; limite21%, limite22%, 
+                limite3%
+ 27CF   00F6    'LOCATE 15, 55
+ 27CF   00F6    'PRINT conta61%
+ 27CF   00F6    LOCATE 16, 1
+ 27EA   00F6    PRINT "Pezzi ammessi.................."; conta811%, conta812%, 
+                conta813%
+ 2813   00F6    LOCATE 17, 1
+ 282E   00F6    PRINT STRING$(80, 196);
+ 2846   00F6    LOCATE 18, 1
+ 2861   00F6    PRINT "Funzionamento attivo:..........";
+ 286F   00F6    SELECT CASE stato%
+ 287A   00F8      CASE IS = 0
+ 2889   00F8      PRINT " disattivo per 1 minuto  "; STR$(INT(TIMER / 60) - tem
+                po3%);
+ 28CD   00F8      CASE IS = 1
+ 28DF   00F8      PRINT " funzione giorno              ";
+                                                                      PAGE  15
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 28ED   00F8      CASE IS = 2
+ 28FF   00F8      PRINT " funzione notte               ";
+ 290D   00F8      CASE IS = 3
+ 291F   00F8      PRINT " disattivo 15 minuti     "; STR$(INT(TIMER / 60) - tem
+                po3%);
+ 2963   00F8    END SELECT
+ 296B   00F8    LOCATE 19, 1
+ 2986   00F8    PRINT STRING$(80, 205);
+ 299E   00F8    LOCATE 20, 1
+ 29B9   00F8    PRINT "Salva dati su disco ogni ......"; STR$(conta9%) + " colp
+                i"
+ 29E0   00F8    LOCATE 21, 1
+ 29FB   00F8    PRINT "Produzione pezzi al minuto....."; " " + RIGHT$(STR$(colp
+                imin0&), 3)
+ 2A30   00F8    RETURN
+ 2A3A   00F8    '
+ 2A3A   00F8    inseguimento1:           ' autoinseguimento  ogni conta8% colpi
+                  ( 50 )
+ 2A44   00F8    IF mass1% > rif1% THEN rif1% = rif1% + 1
+ 2A5E   00F8    IF mass1% < rif1% THEN rif1% = rif1% - 1
+ 2A78   00F8    ' con l'occasione si aggiorna anche l'orologio
+ 2A78   00F8    LOCATE 1, 1
+ 2A8D   00F8    PRINT TIME$
+ 2A9D   00F8    GOSUB tempoaux
+ 2AAA   00F8    RETURN
+ 2AB4   00F8    inseguimento2:
+ 2ABE   00F8    IF mass2% > rif2% THEN rif2% = rif2% + 1
+ 2AD8   00F8    IF mass2% < rif2% THEN rif2% = rif2% - 1
+ 2AF2   00F8    RETURN
+ 2AFC   00F8    '
+ 2AFC   00F8    salva:
+ 2B06   00F8    OPEN "forma.dat" FOR OUTPUT AS #1   'salva i dati ogni 50 colpi
+                , oppure ogni
+ 2B20   00F8      PRINT #1, conta01!, conta02!    'volta che esce fuori tollera
+                nza
+ 2B48   00F8      PRINT #1, conta11&, conta12&
+ 2B70   00F8      PRINT #1, conta21&, conta22&
+ 2B98   00F8      PRINT #1, conta31&, conta32&
+ 2BC0   00F8      PRINT #1, conta41&, conta42&
+ 2BE8   00F8      PRINT #1, conta51%, conta52%
+ 2C08   00F8      PRINT #1, conta61%, conta62%
+ 2C28   00F8      PRINT #1, conta71%, conta72%
+ 2C48   00F8      PRINT #1, media1%, media2%
+ 2C68   00F8      PRINT #1, rif1%, rif2%, stab1%, stab2%
+ 2C9A   00F8      PRINT #1, limite1%, limite2%
+ 2CBA   00F8      PRINT #1, tempo12&, tempo21%, tempo22%
+ 2CE7   00F8      PRINT #1, conta811%, conta812%, conta813%
+ 2D10   00F8      PRINT #1, conta821%, conta822%, conta823%
+ 2D39   00F8    CLOSE #1
+ 2D48   00F8    var% = 0                            'variabile locale dummy
+ 2D53   00FA    OPEN "analisi.dat" FOR INPUT AS #2  'apre e carica array preced
+                ente
+ 2D6D   00FA      INPUT #2, var%                    'butta via il dato piu vecc
+                hio
+                                                                      PAGE  16
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 2D8C   00FA      FOR i = 0 TO 638                  'con uno shift di -1
+ 2D9A   00FA      INPUT #2, analisi%(i)
+ 2DC8   00FA      NEXT
+ 2DF1   00FA    CLOSE #2
+ 2E03   00FA    OPEN "analisi.dat" FOR OUTPUT AS #2    'scrive il nuovo array d
+                i analisi
+ 2E1D   00FA      FOR i = 0 TO 638
+ 2E2A   00FA       PRINT #2, analisi%(i)
+ 2E4F   00FA      NEXT
+ 2E78   00FA      PRINT #2, mass2%
+ 2E8F   00FA    CLOSE #2
+ 2EA1   00FA    RETURN
+ 2EAB   00FA    tempoaux:
+ 2EB5   00FA    ferma% = 0
+ 2EC0   00FA    'tempo21% = 0            'tempo turno ausiliario in minuti
+ 2EC0   00FA    'tempo22% = 0            'limite intervento turno ausiliario (0
+                 escluso)
+ 2EC0   00FA    'tempo23% = int(timer/60)
+ 2EC0   00FA    tempo21% = tempo21% + (INT(TIMER / 60) - tempo24%)
+ 2EF9   00FA    tempo24% = INT(TIMER / 60)  'tempo24% serve per aggiornare cont
+                atore tempo
+ 2F1C   00FA    IF tempo21% >= tempo22% AND tempo22% <> 0 THEN ferma% = 14
+ 2F4A   00FA    RETURN
+ 2F54   00FA    
+ 2F54   00FA    menu:
+ 2F5E   00FA    DO                      'cicla fino a che non si preme invio
+ 2F64   00FA     LOCATE 25, 1
+ 2F7F   00FA     PRINT "Esci   1 2 3 4 5 6 7 8 9 10 11 12     Contatori    Stab
+                ilita'   Funzione   Reset";
+ 2F8D   00FA     LOCATE 24, 16
+ 2FAB   00FA        INPUT ; " Inserire la iniziale del comando...", sel$  'vari
+                abile scelta
+ 2FDA   00FA     IF UCASE$(sel$) = "E" THEN
+ 2FF7   00FA      GOSUB salva            'prima di uscire salva i dati
+ 3004   00FA      CLS
+ 3012   00FA      END
+ 301C   00FA     ELSEIF UCASE$(sel$) = "R" THEN
+ 303C   00FA      rif1% = mass1%
+ 3047   00FA      rif2% = mass2%
+ 3052   00FA      stato% = 0                             'passa in manuale 1 mi
+                nuto
+ 305D   00FA      tempo3% = INT(TIMER / 60)              'azzera conteggio 1 mi
+                nuto
+ 3080   00FA     ELSEIF UCASE$(sel$) = "S" THEN
+ 30A0   00FA      LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 30F3   00FA      INPUT ; "Inserire stabilita' 1................", inval$
+ 3122   00FA      IF inval$ <> "" THEN
+ 3139   00FA        stab1% = VAL(inval$)
+ 3154   00FA      END IF
+ 3159   00FA      LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 31AC   00FA      INPUT ; "Inserire stabilita' 2................", inval$
+ 31DB   00FA      IF inval$ <> "" THEN
+ 31F2   00FA        stab2% = VAL(inval$)
+ 320D   00FA      END IF
+                                                                      PAGE  17
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 3212   00FA      LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 3265   00FA      INPUT ; "Piccoli scostamenti ammessi..........", inval$
+ 3294   00FA      IF inval$ <> "" THEN
+ 32AB   00FA        conta811% = VAL(inval$)
+ 32C6   00FA        conta821% = VAL(inval$)
+ 32E1   00FA      END IF
+ 32E6   00FA      LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 3339   00FA      INPUT ; "Grandi scostamenti ammessi...........", inval$
+ 3368   00FA      IF inval$ <> "" THEN
+ 337F   00FA        conta812% = VAL(inval$)
+ 339A   00FA        conta822% = VAL(inval$)
+ 33B5   00FA      END IF
+ 33BA   00FA      LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 340D   00FA      INPUT ; "Scostamenti assoluti ammessi.........", inval$
+ 343C   00FA      IF inval$ <> "" THEN
+ 3453   00FA        conta813% = VAL(inval$)
+ 346E   00FA        conta823% = VAL(inval$)
+ 3489   00FA      END IF
+ 348E   00FA      stato% = 0                             'passa in manuale 1 mi
+                nuto
+ 3499   00FA      tempo3% = INT(TIMER / 60)              'azzera conteggio 1 mi
+                nuto
+ 34BC   00FA     ELSEIF UCASE$(sel$) = "F" THEN
+ 34DC   00FA      LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 10
+ 352F   00FA      INPUT ; "0=temp. 1=giorno 2=notte 3=manuale 4=grafico ....", 
+                inval$
+ 355E   00FA      IF inval$ <> "" THEN
+ 3575   00FA        IF VAL(inval$) < 4 THEN stato% = VAL(inval$)
+ 35B4   00FA        IF VAL(inval$) = 4 THEN
+ 35D8   00FA           CALL grafo(dat%())
+ 35E6   00FA           stato% = 0                             'passa in manuale
+                 1 minuto
+ 35F1   00FA           tempo3% = INT(TIMER / 60)              'azzera conteggio
+                 1 minuto
+ 3614   00FA        END IF
+ 3619   00FA        IF stato% = 3 OR 0 THEN tempo3% = INT(TIMER / 60) 'iniziali
+                zza stato%=3,0
+ 3656   00FA      END IF
+ 365B   00FA     ELSEIF UCASE$(sel$) = "C" THEN
+ 367B   00FA       LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 36CE   00FA       INPUT ; "Impostazione di tutti i contatori...", inval$
+ 36FD   00FA       IF inval$ <> "" THEN
+ 3714   00FA         conta01! = VAL(inval$)      'contatore principale  (fino a
+                 3,4x10^38)
+ 372E   00FA         conta11& = VAL(inval$)      'contatore punzone     (fino a
+                 2147483647)
+ 374D   00FA         conta21& = VAL(inval$)      'contatore matrice
+ 376C   00FA         conta31& = VAL(inval$)      'contatore lotto
+ 378B   00FA         conta41& = VAL(inval$)      'contatore turno ausiliario
+ 37AA   00FA       END IF
+ 37AF   00FA       IF conta01! = 0 THEN                    'azzera dati del tre
+                nd
+ 37CA   00FA          OPEN "analisi.dat" FOR OUTPUT AS #2  'in questo punto e a
+                lla riga 735
+                                                                      PAGE  18
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 37E4   00FA            FOR i = 0 TO 639
+ 37F2   00FA              PRINT #2, 100
+ 3809   00FA            NEXT
+ 3832   00FA          CLOSE #2
+ 3844   00FA       END IF
+ 3849   00FA      tempo3% = INT(TIMER / 60)             'azzera conteggio 1 min
+                uto
+ 386C   00FA       stato% = 0                            'passa in manuale 1 mi
+                nuto
+ 3877   00FA     END IF
+ 387C   00FA     SELECT CASE VAL(sel$)
+ 3896   0102      CASE IS = 1
+ 38B1   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 3904   0102        INPUT ; "Contatore principale.................", inval$
+ 3933   0102        IF inval$ <> "" THEN
+ 394A   0102          conta01! = VAL(inval$)
+ 3964   0102        END IF
+ 3969   0102        IF conta01! = 0 THEN                   'azzera dati del tre
+                nd
+ 3984   0102          OPEN "analisi.dat" FOR OUTPUT AS #2  'in questo punto e a
+                lla
+ 399E   0102            FOR i = 0 TO 639                   'riga 710
+ 39AC   0102              PRINT #2, 100
+ 39C3   0102            NEXT
+ 39EC   0102          CLOSE #2
+ 39FE   0102        END IF
+ 3A03   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+ 3A0E   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 3A31   0102      CASE IS = 2
+ 3A4F   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 3AA2   0102        INPUT ; "Limite contatore principale..........", inval$
+ 3AD1   0102        IF inval$ <> "" THEN
+ 3AE8   0102          conta02! = VAL(inval$)
+ 3B02   0102        END IF
+ 3B07   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+ 3B12   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 3B35   0102      CASE IS = 3
+ 3B53   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 3BA6   0102        INPUT ; "Contatore punzone....................", inval$
+ 3BD5   0102        IF inval$ <> "" THEN
+ 3BEC   0102          conta11& = VAL(inval$)
+ 3C0B   0102        END IF
+ 3C10   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+ 3C1B   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 3C3E   0102      CASE IS = 4
+ 3C5C   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 3CAF   0102        INPUT ; "Limite contatore punzone.............", inval$
+ 3CDE   0102        IF inval$ <> "" THEN
+                                                                      PAGE  19
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 3CF5   0102          conta12& = VAL(inval$)
+ 3D14   0102        END IF
+ 3D19   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+ 3D24   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 3D47   0102      CASE IS = 5
+ 3D65   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 3DB8   0102        INPUT ; "Contatore matrice....................", inval$
+ 3DE7   0102        IF inval$ <> "" THEN
+ 3DFE   0102          conta21& = VAL(inval$)
+ 3E1D   0102        END IF
+ 3E22   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+ 3E2D   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 3E50   0102      CASE IS = 6
+ 3E6E   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 3EC1   0102        INPUT ; "Limite contatore matrice.............", inval$
+ 3EF0   0102        IF inval$ <> "" THEN
+ 3F07   0102          conta22& = VAL(inval$)
+ 3F26   0102        END IF
+ 3F2B   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+ 3F36   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 3F59   0102      CASE IS = 7
+ 3F77   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 3FCA   0102        INPUT ; "Contatore lotto......................", inval$
+ 3FF9   0102        IF inval$ <> "" THEN
+ 4010   0102          conta31& = VAL(inval$)
+ 402F   0102        END IF
+ 4034   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+ 403F   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 4062   0102      CASE IS = 8
+ 4080   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 40D3   0102        INPUT ; "Limite contatore lotto...............", inval$
+ 4102   0102        IF inval$ <> "" THEN
+ 4119   0102          conta32& = VAL(inval$)
+ 4138   0102        END IF
+ 413D   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+ 4148   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 416B   0102      CASE IS = 9
+ 4189   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 41DC   0102        INPUT ; "Contatore turno ausiliario...........", inval$
+ 420B   0102        IF inval$ <> "" THEN
+ 4222   0102          conta41& = VAL(inval$)
+ 4241   0102        END IF
+ 4246   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+                                                                      PAGE  20
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 4251   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 4274   0102      CASE IS = 10
+ 4292   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 42E5   0102        INPUT ; "Limite turno ausiliario..............", inval$
+ 4314   0102        IF inval$ <> "" THEN
+ 432B   0102          conta42& = VAL(inval$)
+ 434A   0102        END IF
+ 434F   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+ 435A   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 437D   0102      CASE IS = 11
+ 439B   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 43EE   0102        INPUT ; "Tempo turno ausiliario in minuti.....", inval$
+ 441D   0102        IF inval$ <> "" THEN
+ 4434   0102          tempo21% = VAL(inval$)
+ 444F   0102        END IF
+ 4454   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+ 445F   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 4482   0102      CASE IS = 12
+ 44A0   0102        LOCATE 24, 15: PRINT SPC(60); : LOCATE 24, 15
+ 44F3   0102        INPUT ; "Limite turno ausiliario in minuti....", inval$
+ 4522   0102        IF inval$ <> "" THEN
+ 4539   0102          tempo22% = VAL(inval$)
+ 4554   0102        END IF
+ 4559   0102        stato% = 0                           'passa in manuale 1 mi
+                nuto
+ 4564   0102        tempo3% = INT(TIMER / 60)            'azzera conteggio 1 mi
+                nuto
+ 4587   0102     END SELECT
+ 458F   0102    LOOP UNTIL sel$ <> CHR$(13)
+ 45AC   0102    GOSUB salva
+ 45B9   0102    CLS
+ 45C7   0102    LOCATE 25, 1
+ 45E2   0102    PRINT "                       Premere un tasto per uscire      
+                            ";
+ 45F0   0102    RETURN
+ 45FA   0102    '
+ 45FA   0102    prefazione:                 'visualizza e modifica dati alla pa
+                rtenza
+ 4604   0102    CLS
+ 4612   0102    'tempo3% = INT(TIMER / 60)   'rimane a tempo determinato
+ 4612   0102    'in$ = INKEY$                'pulisce buffer tastiera
+ 4612   0102    'DO
+ 4612   0102     LOCATE 3, 1
+ 462D   0102     PRINT STRING$(80, 205);
+ 4645   0102     LOCATE 4, 1
+ 4660   0102     PRINT "(1-2)   Contatore principale..."; conta01!, conta02!
+ 4688   0102     LOCATE 5, 1
+ 46A3   0102     PRINT "(3-4)   Punzone - no stop -...."; conta11&, conta12&
+ 46CB   0102     IF conta11& > conta12& THEN
+                                                                      PAGE  21
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 46EA   0102       LOCATE 5, 60                         'lampeggia cambio punzo
+                ne
+ 4708   0102       IF conta12& <> 0 THEN PRINT STRING$(10, 178);
+ 473C   0102     END IF
+ 4741   0102     LOCATE 6, 1
+ 475C   0102     PRINT "(5-6)   Matrice - no stop -...."; conta21&, conta22&
+ 4784   0102     IF conta21& > conta22& THEN
+ 47A3   0102       LOCATE 6, 60                         'lampeggia cambio matri
+                ce
+ 47C1   0102       IF conta22& <> 0 THEN PRINT STRING$(10, 178);
+ 47F5   0102     END IF
+ 47FA   0102     LOCATE 7, 1
+ 4815   0102     PRINT "(7-8)   Lotto   - no stop -...."; conta31&, conta32&
+ 483D   0102     IF conta31& > conta32& THEN
+ 485C   0102       LOCATE 7, 60                         'lampeggia fine lotto
+ 487A   0102       IF conta32& <> 0 THEN PRINT STRING$(10, 178);
+ 48AE   0102     END IF
+ 48B3   0102     LOCATE 8, 1
+ 48CE   0102     PRINT "(9-10)  Contatore turno aux...."; conta41&, conta42&
+ 48F6   0102     tempo23$ = STR$(INT(tempo21% / 60)) + " :" + STR$(tempo21% MOD
+                 60)
+ 4948   0102     LOCATE 9, 1
+ 4963   0102     PRINT "(11-12) Tempo in minuti........"; tempo21%, tempo22%, t
+                empo23$
+ 498C   0102     LOCATE 10, 1
+ 49A7   0102     PRINT STRING$(80, 196);
+ 49BF   0102     LOCATE 11, 50
+ 49DD   0102     PRINT SPC(28);
+ 49F4   0102     LOCATE 11, 1
+ 4A0F   0102     PRINT "Preparatore...................."; mass1%, rif1%, limite
+                01%
+ 4A38   0102     LOCATE 12, 50
+ 4A56   0102     PRINT SPC(28);
+ 4A6D   0102     LOCATE 12, 1
+ 4A88   0102     PRINT "Finitore......................."; mass2%, rif2%, limite
+                02%
+ 4AB1   0102     LOCATE 13, 1
+ 4ACC   0102     PRINT "Stabilita'....................."; stab1%, stab2%, conta
+                81%; conta82%
+ 4AFE   0102     LOCATE 14, 1
+ 4B19   0102     PRINT "Limiti preparatore............."; limite11%, limite12%,
+                 limite3%
+ 4B42   0102     'LOCATE 14, 55
+ 4B42   0102     'PRINT conta51%
+ 4B42   0102     LOCATE 15, 1
+ 4B5D   0102     PRINT "Limiti finitore................"; limite21%, limite22%,
+                 limite3%
+ 4B86   0102     'LOCATE 15, 55
+ 4B86   0102     'PRINT conta61%
+ 4B86   0102     LOCATE 16, 1
+ 4BA1   0102     PRINT "Pezzi ammessi.................."; conta811%, conta812%,
+                 conta813%
+ 4BCA   0102     LOCATE 17, 1
+ 4BE5   0102     PRINT STRING$(80, 196);
+                                                                      PAGE  22
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 4BFD   0102     LOCATE 18, 1
+ 4C18   0102     PRINT "Funzionamento attivo:..........";
+ 4C26   0102     SELECT CASE stato%
+ 4C31   0104       CASE IS = 0
+ 4C40   0104       PRINT " disattivo per 1 minuto  "; STR$(INT(TIMER / 60) - te
+                mpo3%);
+ 4C84   0104       CASE IS = 1
+ 4C96   0104       PRINT " funzione giorno              ";
+ 4CA4   0104       CASE IS = 2
+ 4CB6   0104       PRINT " funzione notte               ";
+ 4CC4   0104       CASE IS = 3
+ 4CD6   0104       PRINT " disattivo 15 minuti     "; STR$(INT(TIMER / 60) - te
+                mpo3%);
+ 4D1A   0104     END SELECT
+ 4D22   0104     LOCATE 19, 1
+ 4D3D   0104     PRINT STRING$(80, 205);
+ 4D55   0104     LOCATE 20, 1
+ 4D70   0104     PRINT "Salva dati su disco ogni ......"; STR$(conta9%) + " col
+                pi"
+ 4D97   0104     LOCATE 21, 1
+ 4DB2   0104     PRINT "Produzione pezzi al minuto....."; " " + RIGHT$(STR$(col
+                pimin0&), 3)
+ 4DE7   0104     LOCATE 23, 16
+ 4E05   0104     PRINT ; "            F1 per modificare i dati              "
+ 4E1C   0104    ON KEY(1) GOSUB menu
+ 4E2F   0104    KEY(1) ON
+ 4E3D   0104    SLEEP (30)
+ 4E4D   0104    KEY(1) OFF
+ 4E5B   0104    ' in$ = INKEY$
+ 4E5B   0104    ' LOCATE 25, 40
+ 4E5B   0104    ' INPUT in$
+ 4E5B   0104    ' IF in$ = "M" OR in$ = "m" THEN GOSUB menu
+ 4E5B   0104    ' IF (INT(TIMER / 60) - tempo3%) > 1 THEN EXIT DO        'tempo
+                 1 minuto
+ 4E5B   0104    ' CLS
+ 4E5B   0104    'LOOP UNTIL ((in$ = "A") OR (in$ = "a"))
+ 4E5B   0104    'tempo3% = INT(TIMER / 60)   'tempo iniziale in stato%=0
+ 4E5B   0104    CLS
+ 4E69   0104    RETURN
+ 4E73   0104    '*************************************FINE*********************
+                *************
+ 4E73   0104    
+ 4E73   0104    SUB grafo (dat%())
+ 4E83   0104    CLS
+ 4E91   0104    SCREEN 12
+ 4EA7   0104    'modo grafico 640 x 400
+ 4EA7   0104    successivo% = 0
+ 4EB1   0104    ripeti2:
+ 4EBB   0104    in2% = 0
+ 4EC5   0104    DO WHILE in2% = 0     'resta in attesa finche' arriva il prossi
+                mity 2
+ 4ED3   0104      CALL ax5210(12, DIO%(0), FLAG%)
+ 4EEE   0104      IF (DIO%(0) AND 2) <> 0 THEN in2% = 1
+ 4F0A   0104    LOOP
+                                                                      PAGE  23
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 4F12   0104    in2% = 0
+ 4F1C   0104    DO WHILE in2% = 0     'resta in attesa finche' arriva il prossi
+                mity 1
+ 4F2B   0104      CALL ax5210(12, DIO%(0), FLAG%)
+ 4F46   0104      IF (DIO%(0) AND 1) <> 0 THEN in2% = 1
+ 4F62   0104    LOOP
+ 4F6A   0104    DIO%(0) = numlett%          'numero letture o conversioni
+ 4F75   0104    DIO%(1) = VARPTR(dat%(0))   'puntatore array dati
+ 4F8A   0104    DIO%(2) = 1                 'trigger interno temporizzato max v
+                elocita'
+ 4F95   0104    DIO%(3) = VARPTR(CH%(0))    'puntatore array canali
+ 4FA0   0104    CALL ax5210(4, DIO%(0), FLAG%)
+ 4FBB   0104    '**************************************************************
+                **************
+ 4FBB   0104    SELECT CASE successivo%
+ 4FC6   0104     CASE IS <= 1
+ 4FD4   0104       LINE (320, 1)-(320, 280)
+ 5000   0104       LINE (1, 280)-(639, 280)
+ 502C   0104       LINE (5, 160)-(315, 160)
+ 5058   0104       LINE (325, 160)-(635, 160)
+ 5084   0104       LOCATE 1, 1
+ 5099   0104       PRINT "Preparatore"
+ 50A7   0104       LOCATE 1, 35
+ 50BF   0104       PRINT " STAVIT snc";
+ 50CD   0104       LOCATE 1, 73
+ 50E5   0104       PRINT "Finitore"
+ 50F3   0104     CASE IS > 10
+ 5104   0104      successivo% = 0
+ 510E   0104       CLS
+ 511C   0104    END SELECT
+ 5124   0104    successivo% = successivo% + 1
+ 512C   0104    SELECT CASE successivo%
+ 5137   0104     CASE IS <= 1
+ 5145   0104    '---------------------------------  t r e n d -----------------
+                ------------
+ 5145   0104    '   LOCATE 20, 26
+ 5145   0104    '   PRINT " -  Scostamento  finitore  -"
+ 5145   0104    LOCATE 20, 1
+ 5160   0104    PRINT "64000 - - - - - - -48000 - - - - - trend finitore - - - 
+                - - 16000 - - - - - - -0"
+ 516E   0104    LINE (0, 479)-(639, 479)
+ 5199   0104    x0% = 0
+ 51A3   0104    y0% = 479
+ 51AD   0104    SELECT CASE mass2%                   'imposta scala grafico tre
+                nd
+ 51B8   0104      CASE IS < 150
+ 51C7   0104        sc% = 2
+ 51D1   0104      CASE 150 TO 500
+ 51ED   0104        sc% = 4
+ 51F7   0104      CASE 501 TO 1000
+ 5213   0104        sc% = 9
+ 521D   0104      CASE 1001 TO 1600
+ 5239   0104        sc% = 15
+ 5243   0104      CASE 1601 TO 2100
+                                                                      PAGE  24
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 525F   0104        sc% = 20
+ 5269   0104    END SELECT
+ 5271   0104    FOR i = 0 TO 638
+ 527E   0104     LINE (x0%, y0% - analisi%(i) / sc%)-(x0% + 1, y0% - analisi%(i
+                 + 1) / sc%)
+ 5330   0104     x0% = x0% + 1
+ 5338   0104    NEXT i
+ 5361   0104    '----------------------------- fine trend ---------------------
+                --------------
+ 5361   0104    END SELECT
+ 5369   0104    x0% = 5
+ 5373   0104    y0% = 160
+ 537D   0104    SELECT CASE mass1%                   'imposta scala grafico fin
+                itore
+ 5388   0104      CASE IS < 150
+ 5397   0104        sc% = 1
+ 53A1   0104      CASE 150 TO 500
+ 53BD   0104        sc% = 3
+ 53C7   0104      CASE 501 TO 1000
+ 53E3   0104        sc% = 6
+ 53ED   0104      CASE 1001 TO 1600
+ 5409   0104        sc% = 11
+ 5413   0104      CASE 1601 TO 2100
+ 542F   0104        sc% = 14
+ 5439   0104    END SELECT
+ 5441   0104    FOR i = 0 TO 298
+ 544E   0104            LINE (x0%, y0% - dat%(i) / sc%)-(x0% + 1, y0% - dat%(i 
+                + 1) / sc%)
+ 5510   0104            x0% = x0% + 1
+ 5518   0104    NEXT i
+ 5541   0104    '-----------------------  finitore    -------------------------
+                ------------
+ 5541   0104    in2% = 0
+ 554B   0104    DO WHILE in2% = 0     'resta in attesa finche' arriva il prossi
+                mity 1
+ 5559   0104      CALL ax5210(12, DIO%(0), FLAG%)
+ 5574   0104      IF (DIO%(0) AND 1) <> 0 THEN in2% = 1
+ 5590   0104    LOOP
+ 5598   0104    in2% = 0
+ 55A2   0104    DO WHILE in2% = 0     'resta in attesa finche' arriva il prossi
+                mity 2
+ 55B1   0104      CALL ax5210(12, DIO%(0), FLAG%)
+ 55CC   0104      IF (DIO%(0) AND 2) <> 0 THEN in2% = 1
+ 55E8   0104    LOOP
+ 55F0   0104    DIO%(0) = numlett%          'numero letture o conversioni
+ 55FB   0104    DIO%(1) = VARPTR(dat%(0))   'puntatore array dati
+ 5610   0104    DIO%(2) = 1                 'trigger interno temporizzato max v
+                elocita'
+ 561B   0104    DIO%(3) = VARPTR(CH%(0))    'puntatore array canali
+ 5626   0104    CALL ax5210(4, DIO%(0), FLAG%)
+ 5641   0104    '**************************************************************
+                **************
+ 5641   0104    x0% = 325
+ 564B   0104    y0% = 160
+                                                                      PAGE  25
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 5655   0104    SELECT CASE mass2%                   'imposta scala grafico fin
+                itore
+ 5660   0104      CASE IS < 150
+ 566F   0104        sc% = 1
+ 5679   0104      CASE 150 TO 500
+ 5695   0104        sc% = 3
+ 569F   0104      CASE 501 TO 1000
+ 56BB   0104        sc% = 6
+ 56C5   0104      CASE 1001 TO 1600
+ 56E1   0104        sc% = 11
+ 56EB   0104      CASE 1601 TO 2100
+ 5707   0104        sc% = 14
+ 5711   0104    END SELECT
+ 5719   0104    FOR i = 0 TO 298
+ 5726   0104    LINE (x0%, y0% - dat%(i) / sc%)-(x0% + 1, y0% - dat%(i + 1) / s
+                c%)
+ 57E8   0104            x0% = x0% + 1
+ 57F0   0104    NEXT i
+ 5819   0104    GOTO finetrend                      'usare solo per debug
+ 5821   0104    '-------------------   aggiorna   trend   ---------------------
+                ------------
+ 5821   0104    mass21% = 0                         'variabile locale massimo
+ 582B   0104    var% = 0                            'variabile locale dummy
+ 5835   0104    FOR i = 0 TO 300
+ 5842   0104      IF dat%(i) > mass21% THEN mass21% = dat%(i)
+ 5889   0104    NEXT
+ 58AF   0104    OPEN "analisi.dat" FOR INPUT AS #2  'apre e carica array preced
+                ente
+ 58C9   0104      INPUT #2, var%
+ 58E8   0104      FOR i = 0 TO 638                  'con uno shift di -1
+ 58F6   0104      INPUT #2, analisi%(i)
+ 5923   0104      NEXT
+ 5949   0104    CLOSE #2
+ 595B   0104    OPEN "analisi.dat" FOR OUTPUT AS #2    'scrive il nuovo array d
+                i analisi
+ 5975   0104      FOR i = 0 TO 638
+ 5982   0104       PRINT #2, analisi%(i)
+ 59A6   0104      NEXT
+ 59CC   0104      PRINT #2, mass21%
+ 59E2   0104    CLOSE #2
+ 59F4   0104    '------------------------  fine aggiorna trend  ---------------
+                ------------
+ 59F4   0104    finetrend:
+ 59FE   0104    IF INKEY$ <> "" THEN
+ 5A17   0104       SCREEN 0
+ 5A2C   0104       CLS
+ 5A3A   0104       EXIT SUB
+ 5A42   0104    END IF
+ 5A47   0104    GOTO ripeti2
+ 5A4F   0104    SCREEN 0
+ 5A64   0104    CLS
+ 5A72   0104    END SUB
+ 5A7F   0104    
+ 5A7F   0104    
+                                                                      PAGE  26
+                                                                      08 Jul 94
+                                                                      19:02:59
+Offset  Dati    Riga sorgente   Compiler Microsoft (R) QuickBASIC versione 4.50
+
+ 6AB6   0104    
+
+43724 Byte disponibili
+29629 Byte liberi
+
+    0 Errori di avvertenza
+    0 Errori gravi

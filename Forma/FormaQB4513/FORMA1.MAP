@@ -1,0 +1,44 @@
+
+ Start  Stop   Length Name                   Class
+ 00000H 06AB5H 06AB6H FORMA1_CODE            BC_CODE
+ 06AB6H 07626H 00B71H CODE                   CODE
+ 07630H 07A97H 00468H _TEXT                  CODE
+ 07A98H 08179H 006E2H LOADRTM                CODE
+ 08180H 08F3FH 00DC0H BR_DATA                BLANK
+ 08F40H 08F40H 00000H BR_SKYS                BLANK
+ 08F40H 0A6CFH 01790H COMMON                 BLANK
+ 0A6D0H 0A7D3H 00104H BC_DATA                BC_VARS
+ 0A7D4H 0A7D9H 00006H NMALLOC                BC_VARS
+ 0A7DAH 0A7DAH 00000H ENMALLOC               BC_VARS
+ 0A7DAH 0A7DAH 00000H BC_FT                  BC_SEGS
+ 0A7E0H 0B4CFH 00CF0H BC_CN                  BC_SEGS
+ 0B4D0H 0B4D2H 00003H BC_DS                  BC_SEGS
+ 0B4D4H 0B4D4H 00000H BC_SAB                 BC_SEGS
+ 0B4D4H 0B4DBH 00008H BC_SA                  BC_SEGS
+ 0B4DCH 0B4DCH 00000H _DATA                  DATA
+ 0B4DCH 0B4F7H 0001CH CDATA                  DATA
+ 0B4F8H 0B4F8H 00000H XCB                    DATA
+ 0B4F8H 0B4FBH 00004H XC                     DATA
+ 0B4FCH 0B4FCH 00000H XCE                    DATA
+ 0B4FCH 0B4FCH 00000H XIFB                   DATA
+ 0B4FCH 0B4FCH 00000H XIF                    DATA
+ 0B4FCH 0B4FCH 00000H XIFE                   DATA
+ 0B4FCH 0B4FCH 00000H XIB                    DATA
+ 0B4FCH 0B4FCH 00000H XI                     DATA
+ 0B4FCH 0B4FCH 00000H XIE                    DATA
+ 0B4FCH 0B4FCH 00000H XPB                    DATA
+ 0B4FCH 0B4FCH 00000H XP                     DATA
+ 0B4FCH 0B4FCH 00000H XPE                    DATA
+ 0B4FCH 0B4FCH 00000H XCFB                   DATA
+ 0B4FCH 0B4FCH 00000H XCF                    DATA
+ 0B4FCH 0B4FCH 00000H XCFE                   DATA
+ 0B4FCH 0B507H 0000CH DBDATA                 DATA
+ 0B508H 0B508H 00000H XOB                    BSS
+ 0B508H 0B508H 00000H XO                     BSS
+ 0B508H 0B508H 00000H XOE                    BSS
+ 0B510H 0BD0FH 00800H STACK                  STACK
+
+ Origin   Group
+ 0818:0   DGROUP
+
+Program entry point at 07A9:00D0
